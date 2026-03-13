@@ -25,7 +25,7 @@ When working with Traktor QML mods, understanding application behavior and contr
 
 **The result**: Install once, get both manual event logs AND automatic real-time state tracking (deck status, mixer levels, BPM, etc.) flowing to the same dashboard.
 
-First install the `install-traktor-mod` script from:
+First install the `traktor-mod` script from:
 
 - https://github.com/lsmith77/traktor-kontrol-qml
 - Setup and usage guide: https://github.com/lsmith77/traktor-kontrol-qml/blob/main/00_HANDBOOK.md
@@ -45,14 +45,14 @@ When you install with `logger install`, it automatically:
 
 > **Disclaimer:** The server.py Python server and QML files are vibe coded via AI with minimal code review. Use with caution and review scripts before production use.
 
-## Quick Start (install-traktor-mod workflow)
+## Quick Start (traktor-mod workflow)
 
-Use the `install-traktor-mod` script from the main handbook repo to install and wire the logger package cleanly.
+Use the `traktor-mod` script from the main handbook repo to install and wire the logger package cleanly.
 
 ### 1. Install logger package into Traktor QML
 
 ```bash
-install-traktor-mod logger install
+traktor-mod logger install
 ```
 
 This installs:
@@ -64,7 +64,7 @@ This installs:
 ### 2. Start the logger server
 
 ```bash
-install-traktor-mod server start
+traktor-mod server start
 ```
 
 ### 3. Open dashboard
@@ -191,24 +191,24 @@ Enable metadata API integration on at least one connected controller to automati
 - **Clock data**: Beat position, phase, master tempo
 - **Browser/playlist state**: Current browser path, selected playlist, selected row/track — requires a controller with a display (S4MK3, S8, D2); not available on screen-less controllers (X1, Z1, F1, etc.)
 
-#### Enable via install-traktor-mod
+#### Enable via traktor-mod
 
 1. **Install the logger first**:
 
    ```bash
-   install-traktor-mod logger install
+   traktor-mod logger install
    ```
 
 2. **Enable controller metadata integration** (requires a controller with a display):
 
    ```bash
-   install-traktor-mod enable-metadata D2,S8
+   traktor-mod enable-metadata D2,S8
    ```
 
 3. **Start the server**:
 
    ```bash
-   install-traktor-mod server start
+   traktor-mod server start
    ```
 
 4. **View the dashboard**: Open http://localhost:8080 → **📊 Live Metadata** or **🎵 Browser** tab
@@ -221,7 +221,7 @@ Enable metadata API integration on at least one connected controller to automati
 #### View Automatic Metadata
 
 1. **Enable metadata integration** for your active controller(s)
-2. **Start the server**: `install-traktor-mod server start`
+2. **Start the server**: `traktor-mod server start`
 3. **Launch Traktor** and interact with decks
 4. **Open dashboard**: http://localhost:8080 → **📊 Live Metadata** tab
 
@@ -450,7 +450,7 @@ See `examples/` for quick snippets and monitoring patterns, including browser/pl
 
 ## Troubleshooting
 
-- If dashboard is unreachable, run `install-traktor-mod server start` (or `python3 ~/.traktor-mod/traktor-logger/server.py`).
+- If dashboard is unreachable, run `traktor-mod server start` (or `python3 ~/.traktor-mod/traktor-logger/server.py`).
 - If **Console Logs** is empty, verify Logger is integrated in the active QML path and restart Traktor.
 - If **Live Metadata** is empty, enable metadata integration on at least one connected controller (`--enable-metadata=...`).
 - If port `8080` is in use, update `PORT` in `server.py`.
@@ -474,8 +474,8 @@ To test traktor-logger from a development branch before it's merged to main:
 
 ```bash
 # Test a feature branch
-./install-traktor-mod logger install --branch feature/xyz
-./install-traktor-mod enable-metadata D2
+./scripts/traktor-mod logger install --branch feature/xyz
+./scripts/traktor-mod enable-metadata D2
 # Open http://localhost:8080 to verify the feature
 ```
 
@@ -488,11 +488,11 @@ To iterate on traktor-logger locally without GitHub round-trips:
 git clone https://github.com/lsmith77/traktor-logger.git ~/dev/traktor-logger
 
 # Install from local repo
-./install-traktor-mod logger install --local ~/dev/traktor-logger
+./scripts/traktor-mod logger install --local ~/dev/traktor-logger
 
 # Edit files in ~/dev/traktor-logger/
 # Reinstall (instant):
-./install-traktor-mod logger install --local ~/dev/traktor-logger
+./scripts/traktor-mod logger install --local ~/dev/traktor-logger
 ```
 
 ### Full Documentation

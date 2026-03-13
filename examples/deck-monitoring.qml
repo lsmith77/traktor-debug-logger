@@ -8,7 +8,7 @@ import CSI 1.0
  * This demonstrates tracking play state, BPM, track info, and more.
  * 
  * Install Logger.qml first:
- *   install-traktor-mod --install-logger-only
+ *   traktor-mod --install-logger-only
  * 
  * Then add this module to your controller:
  *   DeckMonitor { deckId: 0 }  // For deck A

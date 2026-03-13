@@ -7,7 +7,7 @@ import CSI 1.0
  * Shows how to track master BPM, tempo, and send to debug logger.
  * 
  * Install Logger.qml first:
- *   install-traktor-mod --install-logger-only
+ *   traktor-mod --install-logger-only
  * 
  * Then add this module to your main controller file:
  *   MasterClockMonitor { }
