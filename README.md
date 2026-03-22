@@ -53,6 +53,7 @@ Use the `traktor-mod` script from the main handbook repo to install and wire the
 
 ```bash
 traktor-mod logger install
+traktor-mod enable-metadata D2  # replace D2 with your controller (S4MK3, S8, X1MK3, etc.)
 ```
 
 This installs:
@@ -60,6 +61,8 @@ This installs:
 - `Logger.qml` for manual `logger.info/debug/warn/error` output
 - API modules for metadata transport
 - server files under `~/.traktor-mod/traktor-logger`
+
+`enable-metadata` wires API integration into the chosen controller so live deck/mixer state flows to the dashboard. Pick one controller only — `ApiModule` monitors all decks globally, so wiring it into more than one causes duplicate events.
 
 ### 2. Start the logger server
 
@@ -71,14 +74,7 @@ traktor-mod server start
 
 Open `http://localhost:8080`.
 
-### 4. Enable data flow in Traktor
-
-- **Console Logs tab**: Add `Logger` usage in the QML modules you want to monitor
-- **Live Metadata tab**: Enable API integration on at least one connected controller (for example via `enable-metadata`)
-
-Without integration/mapping, the server runs but receives no events.
-
-### 5. Restart Traktor and test
+### 4. Restart Traktor and test
 
 Interact with decks/controls and verify both tabs update.
 
@@ -87,6 +83,109 @@ Interact with decks/controls and verify both tabs update.
 - Handbook index: https://github.com/lsmith77/traktor-kontrol-qml/blob/main/00_HANDBOOK.md
 - Install / backup / restore workflow: https://github.com/lsmith77/traktor-kontrol-qml/blob/main/01_BASICS.md#install--backup--restore-the-safe-workflow
 - Troubleshooting logger flow: https://github.com/lsmith77/traktor-kontrol-qml/blob/main/04_TROUBLESHOOTING.md#technique-4-advanced-debugging-with-http-logger-structured-logging
+
+---
+
+## Manual Installation (without traktor-mod)
+
+If you prefer not to use the `traktor-mod` script, you can install the logger by hand.
+
+**Traktor's QML folder** (referenced as `<qml>` below):
+
+- **Windows**: `C:\Program Files\Native Instruments\Traktor Pro 4\Resources64\qml`
+- **macOS**: `/Applications/Native Instruments/Traktor Pro 4/Traktor Pro 4.app/Contents/Resources/qml`
+  (right-click the app → Show Package Contents → Contents/Resources/qml)
+
+### 1. Download the logger package
+
+Download and extract **https://github.com/lsmith77/traktor-logger/archive/refs/heads/main.zip** — you'll get a folder like `traktor-logger-main`.
+
+### 2. Copy files into Traktor's QML folder
+
+#### Logger.qml
+
+Copy `traktor-logger-main/qml/Logger.qml` to `<qml>/Defines/Logger.qml`, creating the `Defines/` folder if needed.
+
+Open `<qml>/Defines/qmldir` in a text editor (create if it doesn't exist):
+
+- If creating fresh, paste:
+  ```
+  module Traktor.Defines
+  Logger 1.0 Logger.qml
+  ```
+- If the file already exists but has no line starting with `Logger`, add:
+  ```
+  Logger 1.0 Logger.qml
+  ```
+
+#### Api modules
+
+Copy everything inside `traktor-logger-main/qml/CSI/Common/Api/` to `<qml>/CSI/Common/Api/`, creating the `Api/` folder if needed.
+
+#### Screens modules
+
+Copy everything inside `traktor-logger-main/qml/Screens/Common/` to `<qml>/Screens/Common/`, creating the `Common/` folder if needed. Also copy `traktor-logger-main/qml/CSI/Common/Api/ApiClient.js` to `<qml>/Screens/Common/ApiClient.js`.
+
+> **macOS**: Dragging a folder onto an existing folder in Finder replaces it entirely. Use Terminal to overlay files safely:
+> ```sh
+> cp -R traktor-logger-main/qml/Screens/Common/ "<qml>/Screens/Common/"
+> ```
+
+Restart Traktor. The logger is now available via `import Traktor.Defines 1.0` in any QML file.
+
+### 3. Enable metadata collection (optional)
+
+Metadata lets the logger automatically report deck state, tempo, channel info, and browser activity.
+
+#### Enable for one controller (e.g., D2, S8, X1MK3)
+
+Pick one controller that will always be connected. `ApiModule` monitors all decks and channels globally — injecting it into more than one controller causes duplicate events.
+
+1. Open `<qml>/CSI/D2/D2.qml` in a text editor (replace `D2` with your controller: S4MK3, S8, X1MK3, etc.)
+
+2. Add this line immediately after the last `import`:
+
+   ```qml
+   import "../Common/Api"
+   ```
+
+   Skip if the file already contains `Common/Api`.
+
+3. Find the `Mapping {` line and add `ApiModule {}` on the very next line:
+
+   ```qml
+   Mapping {
+     // Automatic metadata collection
+     ApiModule {}
+   ```
+
+   Skip if the file already contains `ApiModule`.
+
+4. Save the file.
+
+#### Enable browser monitoring
+
+For each `Screen.qml` under `<qml>/Screens/` (e.g., `Screens/S4MK3/Screen.qml`):
+
+1. Add an import after the last `import` line. The path is relative — count how many folders deep the file sits below `Screens/`:
+   - One folder deep (e.g., `Screens/S4MK3/Screen.qml`): `import "../Common" as LoggerScreens`
+   - Two folders deep: `import "../../Common" as LoggerScreens`
+
+2. Find the first `{` after the imports (the root element's opening brace). Add on the next line:
+
+   ```qml
+   LoggerScreens.ApiBrowser {}
+   ```
+
+   If the file contains `isLeftScreen`, use this instead (only one screen reports browser data):
+
+   ```qml
+   LoggerScreens.ApiBrowser { active: isLeftScreen }
+   ```
+
+3. Save the file.
+
+Restart Traktor, then open the logger dashboard at `http://localhost:8080`.
 
 ---
 
