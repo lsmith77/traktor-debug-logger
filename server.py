@@ -90,15 +90,13 @@ def print_cli_output(level, message, data):
 # Store live metadata (deck state, master clock, playlist, etc)
 # ⚠️  Metadata is stored in plaintext and visible to any process/user with localhost access
 metadata = {
-    "decks": {},  # {0: {...}, 1: {...}, ...}
-    "deck_audio": {},  # {A: {...}, B: {...}, ...}
-    "deck_effects": {},  # {A: {...}, B: {...}, ...}
+    "decks": {},       # {A: {...}, B: {...}, ...}
     "deck_loops": {},  # {A: {...}, B: {...}, ...}
-    "deck_cues": {},  # {A: {...}, B: {...}, ...}
+    "deck_cues": {},   # {A: {...}, B: {...}, ...}
     "deck_stems": {},  # {A: {...}, B: {...}, ...}
     "master": {},
     "master_audio": {},
-    "channels": {},  # {1: {...}, 2: {...}}
+    "channels": {},    # {1: {...}, 2: {...}, ...}
     "playlist": {},
     "browser": {},
     "last_update": None,
@@ -122,7 +120,9 @@ class DebugLogHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(413)
             self.send_header("Content-Type", CONTENT_TYPE_JSON)
             self.end_headers()
-            self.wfile.write(json.dumps({"error": ERR_PAYLOAD_TOO_LARGE}).encode("utf-8"))
+            self.wfile.write(
+                json.dumps({"error": ERR_PAYLOAD_TOO_LARGE}).encode("utf-8")
+            )
             return (False, None, None)
 
         body = self.rfile.read(content_length).decode("utf-8", errors="replace")
@@ -231,7 +231,9 @@ class DebugLogHandler(http.server.BaseHTTPRequestHandler):
                 self.send_header("Content-Type", CONTENT_TYPE_JSON)
                 self.send_header("X-Content-Type-Options", "nosniff")
                 self.end_headers()
-                self.wfile.write(json.dumps({"error": ERR_INVALID_JSON}).encode("utf-8"))
+                self.wfile.write(
+                    json.dumps({"error": ERR_INVALID_JSON}).encode("utf-8")
+                )
 
         elif path == "/metadata":
             # Receive and store metadata from QML (legacy format with type/state fields)
@@ -284,7 +286,9 @@ class DebugLogHandler(http.server.BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", CONTENT_TYPE_JSON)
                 self.end_headers()
-                self.wfile.write(json.dumps({"error": ERR_INVALID_JSON}).encode("utf-8"))
+                self.wfile.write(
+                    json.dumps({"error": ERR_INVALID_JSON}).encode("utf-8")
+                )
 
         elif path.startswith("/metadata/deck/"):
             # Handle /metadata/deck/A, /metadata/deck/B, etc.
@@ -322,7 +326,9 @@ class DebugLogHandler(http.server.BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", CONTENT_TYPE_JSON)
                 self.end_headers()
-                self.wfile.write(json.dumps({"error": ERR_INVALID_JSON}).encode("utf-8"))
+                self.wfile.write(
+                    json.dumps({"error": ERR_INVALID_JSON}).encode("utf-8")
+                )
 
         elif path == "/metadata/master":
             # Handle /metadata/master
@@ -359,7 +365,9 @@ class DebugLogHandler(http.server.BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", CONTENT_TYPE_JSON)
                 self.end_headers()
-                self.wfile.write(json.dumps({"error": ERR_INVALID_JSON}).encode("utf-8"))
+                self.wfile.write(
+                    json.dumps({"error": ERR_INVALID_JSON}).encode("utf-8")
+                )
 
         elif path.startswith("/deckLoaded/"):
             # traktor-api-client: /deckLoaded/A, /deckloaded/B, etc.
@@ -397,7 +405,9 @@ class DebugLogHandler(http.server.BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", CONTENT_TYPE_JSON)
                 self.end_headers()
-                self.wfile.write(json.dumps({"error": ERR_INVALID_JSON}).encode("utf-8"))
+                self.wfile.write(
+                    json.dumps({"error": ERR_INVALID_JSON}).encode("utf-8")
+                )
 
         elif path.startswith("/updateDeck/"):
             # traktor-api-client: /updateDeck/A, /updateDeck/B, etc.
@@ -423,9 +433,7 @@ class DebugLogHandler(http.server.BaseHTTPRequestHandler):
 
         elif path.startswith("/updateChannel/"):
             # traktor-api-client: /updateChannel/1, /updateChannel/2, etc.
-            success, data, channel = self._handle_json_post(
-                lambda p: p.split("/")[-1]
-            )
+            success, data, channel = self._handle_json_post(lambda p: p.split("/")[-1])
             if success:
                 if "channels" not in metadata:
                     metadata["channels"] = {}
@@ -436,17 +444,6 @@ class DebugLogHandler(http.server.BaseHTTPRequestHandler):
                 }
                 metadata["last_update"] = datetime.now().isoformat()
                 print_cli_output("metadata", f"updateChannel/{channel}", data)
-
-        elif path.startswith("/updateDeckAudio/"):
-            # Audio controls: volume, EQ, filter
-            success, data, deck = self._handle_json_post(lambda p: p.split("/")[-1])
-            if success:
-                self._store_metadata(data, "deck_audio", deck)
-
-        elif path.startswith("/updateDeckEffects/"):
-            success, data, deck = self._handle_json_post(lambda p: p.split("/")[-1])
-            if success:
-                self._store_metadata(data, "deck_effects", deck)
 
         elif path.startswith("/updateDeckLoop/"):
             success, data, deck = self._handle_json_post(lambda p: p.split("/")[-1])
@@ -519,6 +516,26 @@ class DebugLogHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(metadata).encode("utf-8"))
 
+        elif path == "/openapi.yaml":
+            # Serve OpenAPI spec for download / tooling
+            self.send_response(200)
+            self.send_header("Content-Type", "application/yaml")
+            self.send_header(
+                "Content-Disposition", 'attachment; filename="openapi.yaml"'
+            )
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("X-Frame-Options", "DENY")
+            self.end_headers()
+            self.wfile.write(get_openapi_yaml().encode("utf-8"))
+
+        elif path == "/docs":
+            # Serve Swagger UI (loads assets from CDN — requires internet access)
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.end_headers()
+            self.wfile.write(get_swagger_ui_html().encode("utf-8"))
+
         else:
             self.send_response(404)
             self.end_headers()
@@ -580,6 +597,18 @@ def get_html_dashboard():
             display: flex;
             gap: 10px;
             align-items: center;
+        }
+        .header-link {
+            font-size: 12px;
+            color: var(--text-dim);
+            text-decoration: none;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            padding: 3px 8px;
+        }
+        .header-link:hover {
+            color: var(--accent);
+            border-color: var(--accent);
         }
         .status-indicator {
             width: 12px;
@@ -1109,6 +1138,110 @@ def get_html_dashboard():
         .fullscreen-mode .fullscreen-close-btn {
             display: flex;
         }
+        /* ── Loop strip ── */
+        .loop-strip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 8px;
+            padding: 5px 8px;
+            background: rgba(40,50,65,0.6);
+            border: 1px solid #2e3744;
+            border-radius: 4px;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .loop-strip.active {
+            background: rgba(124,209,77,0.1);
+            border-color: #7cd14d;
+        }
+        .loop-label {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: #93a0b1;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+        .loop-strip.active .loop-label { color: #7cd14d; }
+        .loop-size {
+            background: #1a1f27;
+            border: 1px solid #3a4656;
+            border-radius: 3px;
+            padding: 2px 7px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #e6ebf2;
+            min-width: 52px;
+            text-align: center;
+        }
+        .loop-strip.active .loop-size {
+            background: rgba(124,209,77,0.18);
+            border-color: #7cd14d;
+            color: #9ee85d;
+        }
+        .loop-active-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #3a4656;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+        .loop-strip.active .loop-active-dot {
+            background: #7cd14d;
+            box-shadow: 0 0 5px rgba(124,209,77,0.7);
+        }
+        /* ── Cue panel ── */
+        .cue-panel { margin-top: 8px; }
+        .cue-toggle {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 8px;
+            background: rgba(40,50,65,0.6);
+            border: 1px solid #2e3744;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #93a0b1;
+            text-align: left;
+        }
+        .cue-toggle:hover { border-color: #4a5666; color: #c0cad8; }
+        .cue-dot { color: #b57aff; font-size: 11px; line-height: 1; }
+        .cue-chevron { margin-left: auto; font-size: 8px; }
+        .cue-list {
+            display: none;
+            flex-wrap: wrap;
+            gap: 4px;
+            padding: 6px 2px 2px;
+        }
+        .cue-list.open { display: flex; }
+        .cue-chip {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 6px;
+            border-radius: 3px;
+            background: #12161e;
+            border: 1px solid #2a3240;
+            font-size: 9px;
+        }
+        .cue-type-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .cue-pos { color: #93a0b1; font-family: monospace; }
+        .cue-name { color: #d0d8e4; max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sr-only {
+            position: absolute;
+            width: 1px; height: 1px;
+            padding: 0; margin: -1px;
+            overflow: hidden;
+            clip: rect(0,0,0,0);
+            white-space: nowrap;
+            border: 0;
+        }
     </style>
 </head>
 <body>
@@ -1121,6 +1254,7 @@ def get_html_dashboard():
                 <div class="status-indicator" aria-hidden="true"></div>
                 <span>Listening on <code>localhost:8080</code></span>
             </div>
+            <a class="header-link" href="/docs" target="_blank">API Docs</a>
         </header>
 
         <!-- Tabs -->
@@ -1331,8 +1465,6 @@ def get_html_dashboard():
             const master = allMetadata.master || {};
             const channels = allMetadata.channels || {};
             const masterAudio = (allMetadata.master_audio && allMetadata.master_audio.state) || {};
-            const deckAudio = allMetadata.deck_audio || {};
-            const deckEffects = allMetadata.deck_effects || {};
             const deckLoops = allMetadata.deck_loops || {};
             const deckCues = allMetadata.deck_cues || {};
             const deckStems = allMetadata.deck_stems || {};
@@ -1411,10 +1543,10 @@ def get_html_dashboard():
             html += '</div>';
 
             html += '<div class="hud-grid">';
-            html += renderDeckHud(0, deckMap[0], masterBpm, masterDeck, deckAudio, deckEffects, deckLoops, deckCues, deckStems);
-            html += renderDeckHud(1, deckMap[1], masterBpm, masterDeck, deckAudio, deckEffects, deckLoops, deckCues, deckStems);
-            html += renderDeckHud(2, deckMap[2], masterBpm, masterDeck, deckAudio, deckEffects, deckLoops, deckCues, deckStems);
-            html += renderDeckHud(3, deckMap[3], masterBpm, masterDeck, deckAudio, deckEffects, deckLoops, deckCues, deckStems);
+            html += renderDeckHud(0, deckMap[0], masterBpm, masterDeck, deckLoops, deckCues, deckStems);
+            html += renderDeckHud(1, deckMap[1], masterBpm, masterDeck, deckLoops, deckCues, deckStems);
+            html += renderDeckHud(2, deckMap[2], masterBpm, masterDeck, deckLoops, deckCues, deckStems);
+            html += renderDeckHud(3, deckMap[3], masterBpm, masterDeck, deckLoops, deckCues, deckStems);
             html += '</div>';
 
             const playlistState = playlist.state || {};
@@ -1512,7 +1644,7 @@ def get_html_dashboard():
             return -1;
         }
 
-        function renderDeckHud(deckIndex, deckData, masterBpm, masterDeck, deckAudio, deckEffects, deckLoops, deckCues, deckStems) {
+        function renderDeckHud(deckIndex, deckData, masterBpm, masterDeck, deckLoops, deckCues, deckStems) {
             const state = (deckData && deckData.state) ? deckData.state : {};
             const deckLetter = getDeckLabel(deckIndex);
             const isMaster = masterDeck && String(masterDeck).toUpperCase() === deckLetter;
@@ -1524,9 +1656,7 @@ def get_html_dashboard():
             const trackLength = state.trackLength || 0;
             const tempo = state.tempo || 1;
             
-            // Get optional audio/effects/loop/cue/stems data for this deck
-            const audioData = (deckAudio[deckLetter] && deckAudio[deckLetter].state) || {};
-            const effectsData = (deckEffects[deckLetter] && deckEffects[deckLetter].state) || {};
+            // Get loop/cue/stems data for this deck
             const loopData = (deckLoops[deckLetter] && deckLoops[deckLetter].state) || {};
             const cueData = (deckCues[deckLetter] && deckCues[deckLetter].state) || {};
             const stemsData = (deckStems[deckLetter] && deckStems[deckLetter].state) || {};
@@ -1596,45 +1726,49 @@ def get_html_dashboard():
                         <div class="metric"><div class="metric-label">Deck Type</div><div class="metric-value">${escapeHtml(formatCompactValue(deckTypeLabel, "-"))}</div></div>
                     </div>
                     
-                    ${Object.keys(audioData).length > 0 ? `
-                    <div style="margin-top: 8px; padding: 8px; background: rgba(255,159,64,0.1); border: 1px solid #3a4656; border-radius: 4px;">
-                        <div style="font-size: 9px; color: #ffa940; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; font-weight: 700;">🔊 Audio Controls</div>
-                        <div style="font-size: 10px; line-height: 1.6;">
-                            ${audioData.volume !== undefined ? renderColoredFader('Volume', audioData.volume) : ''}
-                            ${audioData.eq_low !== undefined ? renderColoredFader('EQ Low', audioData.eq_low) : ''}
-                            ${audioData.eq_mid !== undefined ? renderColoredFader('EQ Mid', audioData.eq_mid) : ''}
-                            ${audioData.eq_high !== undefined ? renderColoredFader('EQ High', audioData.eq_high) : ''}
-                        </div>
-                    </div>
-                    ` : ''}
-                    
-                    ${Object.keys(effectsData).length > 0 ? `
-                    <div style="margin-top: 8px; padding: 6px; background: rgba(102,204,255,0.1); border: 1px solid #3a4656; border-radius: 4px;">
-                        <div style="font-size: 9px; color: #66ccff; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; font-weight: 700;">FX</div>
-                        <div style="font-size: 10px; color: #99ddff;">
-                            ${effectsData.active_effects ? effectsData.active_effects.map(escapeHtml).join(", ") : "None"}
-                        </div>
-                    </div>
-                    ` : ''}
-                    
-                    ${Object.keys(loopData).length > 0 ? `
-                    <div style="margin-top: 8px; padding: 6px; background: ${asBool(loopData.is_looped) ? 'rgba(92,184,92,0.1)' : 'rgba(100,100,100,0.1)'}; border: 1px solid ${asBool(loopData.is_looped) ? '#7cd14d' : '#3a4656'}; border-radius: 4px;">
-                        <div style="font-size: 9px; color: ${asBool(loopData.is_looped) ? '#7cd14d' : '#93a0b1'}; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; font-weight: 700;">Loop${asBool(loopData.is_looped) ? ' ON' : ''}</div>
-                        <div style="font-size: 10px; color: ${asBool(loopData.is_looped) ? '#9dd14d' : '#c7d1de'};">
-                            ${loopData.loop_length ? formatTime(loopData.loop_length) : '-'} 
-                            ${loopData.loop_size ? `(${loopData.loop_size}B)` : ''}
-                        </div>
-                    </div>
-                    ` : ''}
-                    
-                    ${Array.isArray(cueData.cue_points) && cueData.cue_points.length > 0 ? `
-                    <div style="margin-top: 8px; padding: 6px; background: rgba(200,180,255,0.1); border: 1px solid #3a4656; border-radius: 4px;">
-                        <div style="font-size: 9px; color: #d4b5ff; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; font-weight: 700;">Cues (${cueData.cue_points.length})</div>
-                        <div style="font-size: 9px; color: #e0c7ff; display: flex; flex-wrap: wrap; gap: 4px;">
-                            ${cueData.cue_points.slice(0, 3).map((c, idx) => `<span style="background: #2d2545; padding: 2px 4px; border-radius: 2px;">#${idx + 1} ${escapeHtml(c.name || 'Cue')}</span>`).join('')}
-                        </div>
-                    </div>
-                    ` : ''}
+                    ${(() => {
+                        if (!Object.keys(loopData).length) return '';
+                        const active = asBool(loopData.active);
+                        const size = formatLoopSize(loopData.size);
+                        const n = Number(loopData.size);
+                        const unit = n === 1 ? 'beat' : 'beats';
+                        const label = `Loop: ${size} ${unit}, ${active ? 'active' : 'inactive'}`;
+                        return `<div class="loop-strip${active ? ' active' : ''}" role="region" aria-label="${label}">
+                            <span class="loop-label" aria-hidden="true">LOOP</span>
+                            <span class="loop-size" aria-hidden="true">${size} ${unit.toUpperCase()}</span>
+                            <span class="loop-active-dot" aria-hidden="true"></span>
+                        </div>`;
+                    })()}
+
+                    ${(() => {
+                        const cues = cueData.cues;
+                        if (!Array.isArray(cues) || cues.length === 0) return '';
+                        const expanded = !!cueExpanded[deckLetter];
+                        const listId = `cue-list-${deckLetter}`;
+                        const chips = cues.map(c => {
+                            const color = cueTypeColors[c.type] || '#93a0b1';
+                            const typeLabel = c.type || 'cue';
+                            const chipLabel = `${formatTime(c.pos)}${c.name ? ', ' + c.name : ''}, type: ${typeLabel}`;
+                            return `<div class="cue-chip" role="listitem" aria-label="${escapeHtml(chipLabel)}">
+                                <span class="cue-type-dot" style="background:${color}" aria-hidden="true"></span>
+                                <span class="cue-pos" aria-hidden="true">${formatTime(c.pos)}</span>
+                                ${c.name ? `<span class="cue-name" aria-hidden="true">${escapeHtml(c.name)}</span>` : ''}
+                                <span class="sr-only">(${escapeHtml(typeLabel)})</span>
+                            </div>`;
+                        }).join('');
+                        const count = cues.length;
+                        return `<div class="cue-panel">
+                            <button class="cue-toggle"
+                                    onclick="toggleCue('${deckLetter}')"
+                                    aria-expanded="${expanded}"
+                                    aria-controls="${listId}">
+                                <span class="cue-dot" aria-hidden="true">●</span>
+                                ${count} ${count === 1 ? 'cue point' : 'cue points'}
+                                <span class="cue-chevron" aria-hidden="true">${expanded ? '▲' : '▼'}</span>
+                            </button>
+                            <div id="${listId}" class="cue-list${expanded ? ' open' : ''}" role="list">${chips}</div>
+                        </div>`;
+                    })()}
                     
                     ${stemsData.stems && Array.isArray(stemsData.stems) && stemsData.stems.length > 0 ? `
                     <div style="margin-top: 8px; padding: 8px; background: rgba(100,200,255,0.08); border: 1px solid #3a4656; border-radius: 4px;">
@@ -1667,6 +1801,29 @@ def get_html_dashboard():
                 </div>
             `;
         }
+
+        // Cue panel toggle state — persists across re-renders
+        const cueExpanded = {};
+        function toggleCue(deck) {
+            cueExpanded[deck] = !cueExpanded[deck];
+            renderMetadata();
+        }
+
+        function formatLoopSize(size) {
+            if (size === null || size === undefined || size === '') return '-';
+            const n = Number(size);
+            if (!isFinite(n) || n <= 0) return '-';
+            if (n < 1) {
+                const denom = Math.round(1 / n);
+                return '1/' + denom;
+            }
+            return Number.isInteger(n) ? String(n) : n.toFixed(2);
+        }
+
+        const cueTypeColors = {
+            cue: '#4ab8ff', fadeIn: '#7cd14d', fadeOut: '#ff6b6b',
+            load: '#ffd84d', grid: '#cc88ff', loop: '#ff9944',
+        };
 
         function formatTime(seconds) {
             if (!Number.isFinite(seconds) || seconds < 0) return "-";
@@ -1907,6 +2064,1027 @@ def get_html_dashboard():
     </script>
 </body>
 </html>
+"""
+
+
+def get_swagger_ui_html():
+    """Return Swagger UI HTML page (loads JS/CSS from CDN — requires internet access)"""
+    return """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Traktor Logger — API Docs</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+    <style>
+        body { margin: 0; }
+        .swagger-ui .topbar { background: #08090b; }
+        .swagger-ui .topbar .download-url-wrapper { display: none; }
+    </style>
+</head>
+<body>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+    <script>
+        SwaggerUIBundle({
+            url: "/openapi.yaml",
+            dom_id: "#swagger-ui",
+            presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
+            layout: "BaseLayout",
+            deepLinking: true,
+        });
+    </script>
+</body>
+</html>"""
+
+
+def get_openapi_yaml():
+    """Return the OpenAPI 3.1 spec for the Traktor Logger HTTP API"""
+    return """openapi: 3.1.0
+info:
+  title: Traktor Logger HTTP API
+  version: 0.2.0
+  description: |
+    Local HTTP server that receives log events and metadata from Traktor QML
+    controller mods and exposes them via a browser dashboard.
+
+    **Base URL**: `http://localhost:8080`
+
+    **Security note**: The server binds to `localhost` only. There is no
+    authentication — any process with localhost access can read all logs and
+    metadata. Do not log credentials or sensitive data.
+
+    ### Two client sources
+    - **Logger.qml** — sends `POST /log` for manual debug messages
+    - **Api modules** (ApiDeck, ApiMasterClock, ApiChannel) — send metadata
+      events as Traktor controller state changes
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: logging
+    description: Console log ingestion
+  - name: deck
+    description: Deck state (track loaded, playback, tempo, cues)
+  - name: master
+    description: Master clock state
+  - name: channel
+    description: Mixer channel state
+  - name: deck-detail
+    description: Deck audio, effects, loops, cues, stems (optional telemetry)
+  - name: browser
+    description: Traktor browser / playlist state
+  - name: dashboard
+    description: Dashboard HTML and read endpoints
+
+paths:
+
+  # ── Logging ────────────────────────────────────────────────────────────────
+
+  /log:
+    post:
+      tags: [logging]
+      summary: Submit a console log entry
+      description: |
+        Appends a log entry to the in-memory circular buffer (max 100 entries).
+        Also prints a coloured line to the server terminal unless `--quiet` is set.
+
+        **Rate limit**: 100 requests/second. Excess requests receive `429`.
+        **Size limits**: 100 KB payload, 10 KB message, 50 KB data object.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogEntry'
+            examples:
+              info:
+                summary: Info message with data
+                value: { level: info, message: "Deck A loaded", data: { title: "My Track", bpm: 128 } }
+              error:
+                summary: Error message without data
+                value: { level: error, message: "Sync failed" }
+      responses:
+        '200':
+          description: Entry accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  # ── Generic / legacy metadata ───────────────────────────────────────────────
+
+  /metadata:
+    post:
+      tags: [deck, master, browser]
+      summary: Submit metadata (legacy envelope format)
+      description: |
+        Generic metadata endpoint used by `Logger.sendDeckState()`,
+        `Logger.sendMasterState()`, and `Logger.sendPlaylistState()` in
+        Logger.qml. The `type` field routes the payload to the right bucket.
+
+        Prefer the typed endpoints (`/metadata/deck/{deck}`, `/updateDeck/{deck}`,
+        etc.) for new integrations — this envelope form exists for backward
+        compatibility with Logger.qml manual helpers.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MetadataEnvelope'
+            examples:
+              deck:
+                summary: Deck state via envelope
+                value:
+                  type: "deck/A"
+                  state: { title: "My Track", bpm: 128, isPlaying: true }
+              master:
+                summary: Master clock via envelope
+                value:
+                  type: master
+                  state: { bpm: 128.0, tempo: 100 }
+              playlist:
+                summary: Playlist state via envelope
+                value:
+                  type: playlist
+                  state: { playlist: "Favorites", selected_track: "My Song", selected_index: 42, track_count: 150 }
+      responses:
+        '200':
+          description: Metadata accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+
+  /metadata/deck/{deck}:
+    post:
+      tags: [deck]
+      summary: Set deck state (typed endpoint)
+      description: |
+        Stores the request body as the complete state for the given deck,
+        overwriting any previous value. Used by Logger.qml typed helpers.
+      parameters:
+        - $ref: '#/components/parameters/DeckLetter'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeckState'
+      responses:
+        '200':
+          description: Deck state stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+
+  /metadata/master:
+    post:
+      tags: [master]
+      summary: Set master clock state (typed endpoint)
+      description: |
+        Stores the request body as the complete master clock state,
+        overwriting any previous value. Used by Logger.qml typed helpers.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MasterState'
+      responses:
+        '200':
+          description: Master state stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+
+  # ── traktor-api-client compatible endpoints ─────────────────────────────────
+
+  /deckLoaded/{deck}:
+    post:
+      tags: [deck]
+      summary: Deck loaded event
+      description: |
+        Sent by `ApiDeck.qml` when a track is loaded or the deck's `is_loaded`
+        property changes. Stores the full snapshot as the current deck state
+        (does **not** merge — replaces entirely) and tags the entry with
+        `"event": "deckLoaded"`.
+
+        This is a traktor-api-client compatible endpoint.
+      parameters:
+        - $ref: '#/components/parameters/DeckLetter'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeckLoadedPayload'
+      responses:
+        '200':
+          description: Event stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+
+  /updateDeck/{deck}:
+    post:
+      tags: [deck]
+      summary: Partial deck state update
+      description: |
+        Sent by `ApiDeck.qml` on individual property changes (play state, tempo,
+        key, cue points, elapsed time). The payload is **merged** into the
+        existing deck state rather than replacing it, so only changed fields need
+        to be sent. Tags the entry with `"event": "updateDeck"`.
+
+        This is a traktor-api-client compatible endpoint.
+      parameters:
+        - $ref: '#/components/parameters/DeckLetter'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeckUpdatePayload'
+            examples:
+              playState:
+                summary: Play state change
+                value: { elapsedTime: 42.5, isPlaying: true }
+              tempo:
+                summary: Tempo change
+                value: { tempo: 102.3 }
+              cue:
+                summary: Cue point advance
+                value: { nextCuePos: 64.0, nextCueName: "Chorus", nextCueType: "cue", prevCuePos: 32.0, prevCueName: "Build", prevCueType: "cue" }
+      responses:
+        '200':
+          description: State merged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+
+  /updateMasterClock:
+    post:
+      tags: [master]
+      summary: Master clock update
+      description: |
+        Sent by `ApiMasterClock.qml` when master BPM or master deck changes.
+        Replaces the stored master state and tags it with
+        `"event": "updateMasterClock"`.
+
+        This is a traktor-api-client compatible endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MasterClockPayload'
+            examples:
+              playing:
+                summary: Deck A is master at 128 BPM
+                value: { deck: "A", bpm: 128.0 }
+              noMaster:
+                summary: No master deck
+                value: { deck: null, bpm: 0.0 }
+      responses:
+        '200':
+          description: Master clock stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+
+  /updateChannel/{channel}:
+    post:
+      tags: [channel]
+      summary: Mixer channel update
+      description: |
+        Sent by `ApiChannel.qml` when a channel's on-air state or volume level
+        changes. The payload is stored wholesale under `metadata.channels[N]`.
+
+        This is a traktor-api-client compatible endpoint.
+      parameters:
+        - $ref: '#/components/parameters/ChannelNumber'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChannelPayload'
+            examples:
+              onAir:
+                summary: Channel 1 is on-air at 80% volume
+                value: { isOnAir: true, onAirLevel: 0.8 }
+              offAir:
+                summary: Channel 2 cut by crossfader
+                value: { isOnAir: false, onAirLevel: 0.0 }
+      responses:
+        '200':
+          description: Channel state stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+
+  # ── Optional deck detail endpoints ─────────────────────────────────────────
+
+  /updateDeckLoop/{deck}:
+    post:
+      tags: [deck-detail]
+      summary: Deck loop state
+      description: |
+        Sent by `ApiDeck.qml` when loop active or loop size changes.
+      parameters:
+        - $ref: '#/components/parameters/DeckLetter'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeckLoopPayload'
+      responses:
+        '200':
+          description: Stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+
+  /updateDeckCues/{deck}:
+    post:
+      tags: [deck-detail]
+      summary: Deck cue points
+      description: |
+        Sent by `ApiDeck.qml` on deck load with all hot cues that have `exists = true`.
+      parameters:
+        - $ref: '#/components/parameters/DeckLetter'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeckCuesPayload'
+      responses:
+        '200':
+          description: Stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+
+  /updateDeckStems/{deck}:
+    post:
+      tags: [deck-detail]
+      summary: Deck stems state
+      description: |
+        Sent by `ApiDeck.qml` for stem decks (deck type 2) when any stem's
+        volume, filter value, or filter-on state changes.
+      parameters:
+        - $ref: '#/components/parameters/DeckLetter'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeckStemsPayload'
+            examples:
+              stems:
+                summary: Four stems with mixed state
+                value:
+                  stems:
+                    - { volume: 1.0, filter: 0.5, filterOn: false }
+                    - { volume: 0.8, filter: 0.3, filterOn: true }
+                    - { volume: 1.0, filter: 0.5, filterOn: false }
+                    - { volume: 0.6, filter: 0.5, filterOn: false }
+      responses:
+        '200':
+          description: Stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+
+  /updateMasterAudio:
+    post:
+      tags: [master]
+      summary: Master channel audio state
+      description: |
+        Optional telemetry endpoint for master audio controls. Not sent by the
+        default Api modules — wire it from custom QML if needed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MasterAudioPayload'
+      responses:
+        '200':
+          description: Stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+
+  /updateBrowser:
+    post:
+      tags: [browser]
+      summary: Browser / playlist state
+      description: |
+        Sent by `ApiBrowser.qml` (Screens layer) every 250 ms when browser
+        state changes. Only the selected row and a window of 31 surrounding
+        items are captured. Duplicate payloads are suppressed client-side.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrowserPayload'
+      responses:
+        '200':
+          description: Stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+
+  # ── Dashboard / read endpoints ──────────────────────────────────────────────
+
+  /:
+    get:
+      tags: [dashboard]
+      summary: Browser dashboard
+      description: |
+        Serves the single-page HTML dashboard with three tabs:
+        **Console Logs**, **Live Metadata** (with fullscreen HUD), and
+        **Browser**. Auto-refreshes every 500 ms.
+      responses:
+        '200':
+          description: Dashboard HTML
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /logs:
+    get:
+      tags: [dashboard]
+      summary: Retrieve stored log entries
+      description: |
+        Returns all log entries currently held in the circular buffer
+        (up to 100). Oldest entries are dropped when the buffer is full.
+      responses:
+        '200':
+          description: Log entries array
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StoredLogEntry'
+              example:
+                - timestamp: "2025-03-24T12:00:00.123456"
+                  level: info
+                  message: "Deck A loaded"
+                  data: { title: "My Track", bpm: 128 }
+                - timestamp: "2025-03-24T12:00:01.456789"
+                  level: warn
+                  message: "Sync unstable"
+                  data: null
+
+  /state:
+    get:
+      tags: [dashboard]
+      summary: Retrieve full metadata state
+      description: |
+        Returns the complete in-memory metadata object as JSON. All sub-objects
+        are populated only after the corresponding events have been received
+        since the server started.
+      responses:
+        '200':
+          description: Current metadata state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataState'
+
+  /openapi.yaml:
+    get:
+      tags: [dashboard]
+      summary: Download this OpenAPI spec
+      description: Returns this OpenAPI 3.1 spec as a YAML file download.
+      responses:
+        '200':
+          description: OpenAPI spec
+          content:
+            application/yaml:
+              schema:
+                type: string
+
+# ── Reusable components ───────────────────────────────────────────────────────
+
+components:
+
+  parameters:
+    DeckLetter:
+      name: deck
+      in: path
+      required: true
+      description: Deck identifier letter
+      schema:
+        type: string
+        enum: [A, B, C, D]
+
+    ChannelNumber:
+      name: channel
+      in: path
+      required: true
+      description: Mixer channel number
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 4
+
+  responses:
+    BadRequest:
+      description: Request body is not valid JSON
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Invalid JSON"
+
+    PayloadTooLarge:
+      description: Request body exceeds the 100 KB limit
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Payload too large"
+
+    RateLimitExceeded:
+      description: More than 100 requests received within the last second
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Rate limit exceeded"
+
+  schemas:
+
+    OkResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok]
+      required: [status]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    # ── Logging ──────────────────────────────────────────────────────────────
+
+    LogEntry:
+      type: object
+      description: A single console log message from QML code
+      properties:
+        level:
+          type: string
+          enum: [debug, info, warn, error]
+          default: info
+          description: Severity level (controls colour in terminal and dashboard)
+        message:
+          type: string
+          maxLength: 10240
+          description: Human-readable log message
+        data:
+          description: Arbitrary JSON object for structured context (optional)
+          oneOf:
+            - type: object
+            - type: 'null'
+      required: [message]
+
+    StoredLogEntry:
+      allOf:
+        - $ref: '#/components/schemas/LogEntry'
+        - type: object
+          properties:
+            timestamp:
+              type: string
+              format: date-time
+              description: ISO 8601 timestamp added by the server on receipt
+          required: [timestamp]
+
+    # ── Generic metadata ─────────────────────────────────────────────────────
+
+    MetadataEnvelope:
+      type: object
+      description: Legacy envelope used by Logger.qml manual helpers
+      properties:
+        type:
+          type: string
+          description: |
+            Routing key. Supported values:
+            - `deck/A`, `deck/B`, `deck/C`, `deck/D` — stored in `metadata.decks`
+            - `master` — stored in `metadata.master`
+            - `playlist` — stored in `metadata.playlist`
+          examples:
+            - "deck/A"
+            - "master"
+            - "playlist"
+        state:
+          type: object
+          description: Payload to store (schema depends on `type`)
+      required: [type, state]
+
+    # ── Deck ─────────────────────────────────────────────────────────────────
+
+    DeckState:
+      type: object
+      description: Arbitrary deck state object (stored verbatim)
+      additionalProperties: true
+
+    DeckLoadedPayload:
+      type: object
+      description: Full deck snapshot sent when a track is loaded
+      properties:
+        filePath:
+          type: string
+          description: Absolute path to the audio file
+        title:
+          type: string
+        artist:
+          type: string
+        album:
+          type: string
+        genre:
+          type: string
+        comment:
+          type: string
+        comment2:
+          type: string
+        label:
+          type: string
+        mix:
+          type: string
+        remixer:
+          type: string
+        key:
+          type: number
+          description: Numeric musical key index from Traktor
+        keyText:
+          type: string
+          description: Human-readable key string (legacy format)
+        gridOffset:
+          type: number
+          description: Beat grid offset in seconds
+        trackLength:
+          type: number
+          description: Total track length in seconds
+        elapsedTime:
+          type: number
+          description: Playback position in seconds
+        nextCuePos:
+          type: number
+          nullable: true
+          description: Position of the next hotcue in seconds (null if none)
+        nextCueName:
+          type: string
+          nullable: true
+        nextCueType:
+          type: string
+          nullable: true
+          enum: [cue, fadeIn, fadeOut, load, grid, loop, null]
+        prevCuePos:
+          type: number
+          nullable: true
+        prevCueName:
+          type: string
+          nullable: true
+        prevCueType:
+          type: string
+          nullable: true
+          enum: [cue, fadeIn, fadeOut, load, grid, loop, null]
+        bpm:
+          type: number
+          description: Track base BPM
+        tempo:
+          type: number
+          description: Current tempo as percentage (100 = original BPM)
+        resultingKey:
+          type: number
+          description: Key-shifted resulting key (precise)
+        deckType:
+          type: integer
+          description: "Traktor deck type: 0=Track, 2=Stem, 3=Remix"
+        activeSlot:
+          type: integer
+          description: Active remix slot (relevant when deckType=3)
+        isPlaying:
+          type: boolean
+        isSynced:
+          type: boolean
+        isKeyLockOn:
+          type: boolean
+      additionalProperties: true
+
+    DeckUpdatePayload:
+      type: object
+      description: |
+        Partial deck state update — any subset of DeckLoadedPayload fields.
+        The server merges this into the existing deck state.
+      additionalProperties: true
+      properties:
+        elapsedTime:
+          type: number
+        isPlaying:
+          type: boolean
+        isSynced:
+          type: boolean
+        isKeyLockOn:
+          type: boolean
+        tempo:
+          type: number
+        resultingKey:
+          type: number
+        deckType:
+          type: integer
+        activeSlot:
+          type: integer
+        nextCuePos:
+          type: number
+          nullable: true
+        nextCueName:
+          type: string
+          nullable: true
+        nextCueType:
+          type: string
+          nullable: true
+        prevCuePos:
+          type: number
+          nullable: true
+        prevCueName:
+          type: string
+          nullable: true
+        prevCueType:
+          type: string
+          nullable: true
+
+    DeckLoopPayload:
+      type: object
+      properties:
+        active:
+          type: boolean
+          description: Whether a loop is currently active
+        size:
+          type: number
+          description: Loop length in beats (e.g. 0.5, 1, 2, 4, 8, 16, 32)
+      required: [active, size]
+
+    DeckCuesPayload:
+      type: object
+      properties:
+        cues:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              pos:
+                type: number
+                description: Position in seconds
+              type:
+                type: string
+                enum: [cue, fadeIn, fadeOut, load, grid, loop]
+      additionalProperties: true
+
+    DeckStemsPayload:
+      type: object
+      description: Volume and filter state for all four stems
+      properties:
+        stems:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            type: object
+            properties:
+              volume:
+                type: number
+                minimum: 0.0
+                maximum: 1.0
+              filter:
+                type: number
+                minimum: 0.0
+                maximum: 1.0
+                description: Filter value (0.5 = neutral)
+              filterOn:
+                type: boolean
+            required: [volume, filter, filterOn]
+      required: [stems]
+
+    # ── Master ────────────────────────────────────────────────────────────────
+
+    MasterState:
+      type: object
+      description: Arbitrary master state (stored verbatim)
+      additionalProperties: true
+
+    MasterClockPayload:
+      type: object
+      description: Master clock state from ApiMasterClock.qml
+      properties:
+        deck:
+          type: string
+          nullable: true
+          enum: [A, B, C, D, null]
+          description: Which deck is master (null if none / internal clock)
+        bpm:
+          type: number
+          description: Current master BPM
+      required: [deck, bpm]
+
+    MasterAudioPayload:
+      type: object
+      properties:
+        volume:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+        crossfader:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Crossfader position (0 = full left, 1 = full right)
+        headphone_mix:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+        headphone_volume:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+      additionalProperties: true
+
+    # ── Channel ───────────────────────────────────────────────────────────────
+
+    ChannelPayload:
+      type: object
+      description: Channel on-air state from ApiChannel.qml
+      properties:
+        isOnAir:
+          type: boolean
+          description: |
+            True if channel volume > 0 and crossfader is not cutting the channel.
+        onAirLevel:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Effective on-air volume after crossfader attenuation
+      additionalProperties: true
+
+    # ── Browser ───────────────────────────────────────────────────────────────
+
+    BrowserPayload:
+      type: object
+      description: Browser/playlist state from ApiBrowser.qml or Logger.sendPlaylistState()
+      properties:
+        playlist:
+          type: string
+          description: Current playlist or node name
+        selected_track:
+          type: string
+          description: Track name of the currently highlighted row
+        selected_index:
+          type: integer
+          description: Zero-based index of the selected row within the playlist
+        total_tracks:
+          type: integer
+          description: Total number of tracks in the current list
+      additionalProperties: true
+
+    # ── Read responses ────────────────────────────────────────────────────────
+
+    TimestampedEntry:
+      type: object
+      description: Wrapper added by the server when storing metadata events
+      properties:
+        state:
+          type: object
+          additionalProperties: true
+        timestamp:
+          type: string
+          format: date-time
+        event:
+          type: string
+          description: Event type tag (e.g. "deckLoaded", "updateDeck")
+
+    MetadataState:
+      type: object
+      description: Full in-memory metadata object returned by GET /state
+      properties:
+        decks:
+          type: object
+          description: "Keyed by deck letter (A-D). Each value is a TimestampedEntry."
+          additionalProperties:
+            $ref: '#/components/schemas/TimestampedEntry'
+        deck_loops:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/TimestampedEntry'
+        deck_cues:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/TimestampedEntry'
+        deck_stems:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/TimestampedEntry'
+        master:
+          $ref: '#/components/schemas/TimestampedEntry'
+        master_audio:
+          $ref: '#/components/schemas/TimestampedEntry'
+        channels:
+          type: object
+          description: "Keyed by channel number (1-4). Each value is a TimestampedEntry."
+          additionalProperties:
+            $ref: '#/components/schemas/TimestampedEntry'
+        playlist:
+          $ref: '#/components/schemas/TimestampedEntry'
+        browser:
+          $ref: '#/components/schemas/TimestampedEntry'
+        last_update:
+          type: string
+          format: date-time
+          nullable: true
+          description: ISO 8601 timestamp of the most recent write to any metadata bucket
 """
 
 

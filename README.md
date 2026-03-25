@@ -1,6 +1,6 @@
 # Traktor Logger
 
-Version: v1.0.0
+Version: v1.1.0
 
 **A real-time logging and monitoring solution for Traktor QML modding.** Track application events, controller state, and system behavior in a live browser dashboard without code restarts or log file hunting.
 
@@ -126,6 +126,7 @@ Copy everything inside `traktor-logger-main/qml/CSI/Common/Api/` to `<qml>/CSI/C
 Copy everything inside `traktor-logger-main/qml/Screens/Common/` to `<qml>/Screens/Common/`, creating the `Common/` folder if needed. Also copy `traktor-logger-main/qml/CSI/Common/Api/ApiClient.js` to `<qml>/Screens/Common/ApiClient.js`.
 
 > **macOS**: Dragging a folder onto an existing folder in Finder replaces it entirely. Use Terminal to overlay files safely:
+>
 > ```sh
 > cp -R traktor-logger-main/qml/Screens/Common/ "<qml>/Screens/Common/"
 > ```
@@ -175,11 +176,13 @@ S8 and D2 share the same screen file (`Screens/S8/Views/Screen.qml`), which is i
 1. Open `<qml>/Screens/S8/Views/Screen.qml` (D2 has no separate screen folder — it uses this same file).
 
 2. Add this import after the last `import` line:
+
    ```qml
    import "../../Common" as LoggerScreens
    ```
 
 3. Add this as the first child of the root element (the first `{` after the imports):
+
    ```qml
    LoggerScreens.ApiBrowser { active: isLeftScreen }
    ```
@@ -235,6 +238,41 @@ Restart Traktor, then open the logger dashboard at `http://localhost:8080`.
 ---
 
 ## API Reference
+
+### HTTP API spec
+
+The server exposes interactive **API documentation** powered by Swagger UI at:
+
+```
+http://localhost:8080/docs
+```
+
+> **Note**: Swagger UI loads its assets from a CDN (`unpkg.com`), so internet access is required when opening this page. The server itself has no additional dependencies.
+
+The underlying **OpenAPI 3.1 spec** can be downloaded directly at:
+
+```
+http://localhost:8080/openapi.yaml
+```
+
+Both links are also available in the dashboard header.
+
+#### Which QML file uses which endpoints
+
+| QML file             | Endpoints used                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `Logger.qml`         | `POST /log` — manual debug messages (`logger.log()`, `.info()`, `.warn()`, `.error()`)                              |
+| `Logger.qml`         | `POST /metadata` — manual metadata helpers (`logger.sendDeckState()`, `.sendMasterState()`, `.sendPlaylistState()`) |
+| `ApiDeck.qml`        | `POST /deckLoaded/{deck}` — full snapshot on track load                                                             |
+| `ApiDeck.qml`        | `POST /updateDeck/{deck}` — partial updates (play state, tempo, key, elapsed time)                                  |
+| `ApiDeck.qml`        | `POST /updateDeckLoop/{deck}` — loop active and loop size                                                           |
+| `ApiDeck.qml`        | `POST /updateDeckCues/{deck}` — full hot cue list on track load                                                     |
+| `ApiDeck.qml`        | `POST /updateDeckStems/{deck}` — stem volume/filter state on stem decks                                             |
+| `ApiMasterClock.qml` | `POST /updateMasterClock` — master BPM and master deck changes                                                      |
+| `ApiChannel.qml`     | `POST /updateChannel/{N}` — channel on-air state and volume level                                                   |
+| `ApiBrowser.qml`     | `POST /updateBrowser` — browser/playlist state (requires a controller with a screen)                                |
+
+---
 
 ### `logger.log(message, [data])`
 
