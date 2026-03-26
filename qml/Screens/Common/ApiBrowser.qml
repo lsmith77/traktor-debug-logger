@@ -11,7 +11,6 @@
 
 import QtQuick 2.0
 import Traktor.Gui 1.0 as Traktor
-import "ApiClient.js" as ApiClient
 
 Item {
   id: apiBrowser
@@ -30,6 +29,15 @@ Item {
   // Cache of instantiated delegates keyed by list index.
   // Populated/cleared by delegate onCompleted/onDestruction.
   property var delegateCache: ({})
+
+  Component.onCompleted: {
+    pollTimer.interval = 500
+    pollTimer.repeat = true
+    pollTimer.running = false
+    if (active) {
+      pollTimer.running = true
+    }
+  }
 
   Traktor.Browser {
     id: browser
@@ -72,9 +80,6 @@ Item {
 
   Timer {
     id: pollTimer
-    interval: apiBrowser.pollMs
-    repeat: true
-    running: apiBrowser.active
 
     onTriggered: {
       apiBrowser.publishBrowserState()
@@ -147,6 +152,9 @@ Item {
     }
 
     lastPayload = serialized
-    ApiClient.sendMetadata("playlist", payload)
+    var xhr = new XMLHttpRequest()
+    xhr.open("POST", "http://localhost:8080/metadata", true)
+    xhr.setRequestHeader("Content-Type", "application/json")
+    xhr.send(JSON.stringify({ type: "playlist", state: payload, timestamp: new Date().toISOString() }))
   }
 }

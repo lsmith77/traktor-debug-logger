@@ -1,6 +1,6 @@
 # Traktor Logger
 
-Version: v1.1.0
+Version: v1.2.0
 
 **A real-time logging and monitoring solution for Traktor QML modding.** Track application events, controller state, and system behavior in a live browser dashboard without code restarts or log file hunting.
 
@@ -28,12 +28,6 @@ First install the `traktor-mod` script from (for manual install instructions see
 - https://github.com/lsmith77/traktor-kontrol-qml
 - Setup and usage guide: https://github.com/lsmith77/traktor-kontrol-qml/blob/main/00_HANDBOOK.md
 
-When you install with `logger install`, it automatically:
-
-- Downloads/updates the logger package (including server code)
-- Installs Logger.qml for manual logging
-- Installs Api modules for automatic metadata collection
-
 **Two complementary logging approaches**:
 
 - **Manual logs**: Add `logger.info()` to your code for tracking application events and state changes
@@ -50,11 +44,19 @@ Use the `traktor-mod` script from the main handbook repo to install and wire the
 ### 1. Install logger package into Traktor QML
 
 ```bash
-traktor-mod logger install
-traktor-mod enable-metadata S8 # use D2 if you have a physical D2
+traktor-mod logger pull
+traktor-mod --source ~/.traktor-mod/traktor-logger
 ```
 
-`enable-metadata S8` wires API integration into the S8 controller QML. You don't need a physical S8 — see step 2.
+This installs Logger.qml, the qmldir module registration, and all Api components into Traktor's QML.
+
+### 1b. Wire ApiModule into a controller
+
+```bash
+traktor-mod logger api S8 # use D2 if you have a physical D2
+```
+
+`logger api S8` injects `ApiModule {}` into the S8 controller QML. You don't need a physical S8 — see step 2.
 
 ### 2. Register S8 in Traktor's Controller Manager
 
@@ -101,35 +103,29 @@ Download and extract **https://github.com/lsmith77/traktor-logger/archive/refs/h
 
 ### 2. Copy files into Traktor's QML folder
 
-#### Logger.qml
+**Windows**: Simply drag the `traktor-logger-main/qml/` folder onto `<qml>` in Explorer — Windows merges the folder contents automatically.
 
-Copy `traktor-logger-main/qml/Logger.qml` to `<qml>/Defines/Logger.qml`, creating the `Defines/` folder if needed.
+**macOS**: Finder replaces entire folders when you drag them. Use Terminal to overlay files safely:
 
-Open `<qml>/Defines/qmldir` in a text editor (create if it doesn't exist):
+```sh
+cp -R traktor-logger-main/qml/ "<qml>/"
+```
 
-- If creating fresh, paste:
+This copies all files from `qml/` into `<qml>/`, preserving existing content.
+
+#### Manual file-by-file approach (all platforms)
+
+If you prefer explicit control:
+
+- Copy `traktor-logger-main/qml/Defines/Logger.qml` → `<qml>/Defines/Logger.qml`
+- Open `<qml>/Defines/qmldir` (create if missing) and ensure it contains:
   ```
   module Traktor.Defines
   Logger 1.0 Logger.qml
   ```
-- If the file already exists but has no line starting with `Logger`, add:
-  ```
-  Logger 1.0 Logger.qml
-  ```
-
-#### Api modules
-
-Copy everything inside `traktor-logger-main/qml/CSI/Common/Api/` to `<qml>/CSI/Common/Api/`, creating the `Api/` folder if needed.
-
-#### Screens modules
-
-Copy everything inside `traktor-logger-main/qml/Screens/Common/` to `<qml>/Screens/Common/`, creating the `Common/` folder if needed. Also copy `traktor-logger-main/qml/CSI/Common/Api/ApiClient.js` to `<qml>/Screens/Common/ApiClient.js`.
-
-> **macOS**: Dragging a folder onto an existing folder in Finder replaces it entirely. Use Terminal to overlay files safely:
->
-> ```sh
-> cp -R traktor-logger-main/qml/Screens/Common/ "<qml>/Screens/Common/"
-> ```
+  If the file already exists, just add `Logger 1.0 Logger.qml` if it's not already there.
+- Copy everything inside `traktor-logger-main/qml/CSI/Common/Api/` → `<qml>/CSI/Common/Api/`
+- Copy everything inside `traktor-logger-main/qml/Screens/Common/` → `<qml>/Screens/Common/`
 
 Restart Traktor. The logger is now available via `import Traktor.Defines 1.0` in any QML file.
 
@@ -331,15 +327,17 @@ Enable metadata API integration on at least one connected controller to automati
 
 #### Enable via traktor-mod
 
-1. **Install the logger and wire a controller**:
+1. **Install the logger package and wire a controller**:
 
    ```bash
-   traktor-mod logger install
-   traktor-mod enable-metadata S8
+   traktor-mod logger pull
+   traktor-mod --source ~/.traktor-mod/traktor-logger
+   traktor-mod logger api S8
    ```
 
-   > **D2 users**: use `enable-metadata D2` — no need to add a virtual S8.
-   > **S8 users**: use `enable-metadata S8` — no need to add a pre-mapped S8 in step 2.
+> No need to add a pre-mapped S8 as noted in step 2 for:
+> **D2 users**: use `logger api D2`
+> **S8 users**: use `logger api S8`
 
 2. **Register S8 in Traktor** (skip if you used D2 or have a physical S8):
    - Traktor: **Preferences** (⌘, / Ctrl+,) → **Controller Manager** → **Add** → **Pre-Mapped** → **Traktor Kontrol** → **S8**
@@ -582,7 +580,23 @@ Send browser/playlist state (optional telemetry).
 
 ## Examples
 
-See `examples/` for quick snippets and monitoring patterns, including browser/playlist telemetry via `browser-playlist-monitoring.qml`.
+Add `Logger { id: logger }` to any controller mapping, then call `logger.info/warn/error/debug` with an optional data object:
+
+```qml
+import QtQuick 2.0
+import CSI 1.0
+
+Mapping {
+    Logger { id: logger }
+
+    Component.onCompleted: {
+        logger.info("Mapping loaded")
+        logger.warn("Experimental feature active", { feature: "custom-knob" })
+        logger.error("Unexpected value", { expected: 1, got: 0 })
+        logger.debug("State snapshot", { playing: false, bpm: 120, deck: 1 })
+    }
+}
+```
 
 ---
 
@@ -590,7 +604,7 @@ See `examples/` for quick snippets and monitoring patterns, including browser/pl
 
 - If dashboard is unreachable, run `traktor-mod server start` (or `python3 ~/.traktor-mod/traktor-logger/server.py`).
 - If **Console Logs** is empty, verify Logger is integrated in the active QML path and restart Traktor.
-- If **Live Metadata** is empty, enable metadata integration on at least one connected controller (`--enable-metadata=...`).
+- If **Live Metadata** is empty, enable metadata integration on at least one connected controller (`traktor-mod logger api <controller>`).
 - If port `8080` is in use, update `PORT` in `server.py`.
 
 ---
@@ -611,9 +625,11 @@ See `examples/` for quick snippets and monitoring patterns, including browser/pl
 To test traktor-logger from a development branch before it's merged to main:
 
 ```bash
-# Test a feature branch
-./scripts/traktor-mod logger install --branch feature/xyz
-./scripts/traktor-mod enable-metadata D2
+# Pull a feature branch into the local cache
+traktor-mod logger pull --branch feature/xyz
+# Install from cache
+traktor-mod --source ~/.traktor-mod/traktor-logger
+traktor-mod logger api D2
 # Open http://localhost:8080 to verify the feature
 ```
 
@@ -625,12 +641,12 @@ To iterate on traktor-logger locally without GitHub round-trips:
 # Clone locally
 git clone https://github.com/lsmith77/traktor-logger.git ~/dev/traktor-logger
 
-# Install from local repo
-./scripts/traktor-mod logger install --local ~/dev/traktor-logger
+# Install directly from local clone
+traktor-mod --source ~/dev/traktor-logger
 
 # Edit files in ~/dev/traktor-logger/
 # Reinstall (instant):
-./scripts/traktor-mod logger install --local ~/dev/traktor-logger
+traktor-mod --source ~/dev/traktor-logger
 ```
 
 ### Full Documentation
