@@ -68,10 +68,10 @@ Item {
     delegate: Item {
       readonly property string hotcuePathPrefix: pathPrefix + "track.cue.hotcues." + (index+1) + "."
 
-      AppProperty { path: hotcuePathPrefix + "exists";     onValueChanged: hotcueExists[index] = value }
-      AppProperty { path: hotcuePathPrefix + "start_pos";  onValueChanged: hotcuePos[index] = value }
-      AppProperty { path: hotcuePathPrefix + "name";       onValueChanged: hotcueName[index] = value }
-      AppProperty { path: hotcuePathPrefix + "type";       onValueChanged: hotcueType[index] = hotcueTypes[value] }
+      AppProperty { path: hotcuePathPrefix + "exists";     onValueChanged: { hotcueExists[index] = value; cueChangedTimer.restart() } }
+      AppProperty { path: hotcuePathPrefix + "start_pos";  onValueChanged: { hotcuePos[index] = value;    cueChangedTimer.restart() } }
+      AppProperty { path: hotcuePathPrefix + "name";       onValueChanged: { hotcueName[index] = value;   cueChangedTimer.restart() } }
+      AppProperty { path: hotcuePathPrefix + "type";       onValueChanged: { hotcueType[index] = hotcueTypes[value]; cueChangedTimer.restart() } }
     }
   }
 
@@ -177,6 +177,14 @@ Item {
     }
   }
   Timer {
+    id: cueChangedTimer
+    interval: 250
+
+    onTriggered: {
+      ApiClient.send("updateDeckCues/" + deckLetter, { cues: buildCueList() })
+    }
+  }
+  Timer {
     id: stemChangedTimer
     interval: 250
 
@@ -242,9 +250,11 @@ Item {
 
   function buildCueList() {
     var cues = []
-    for (var i = 0; i < hotcueExists.length; i++) {
+    for (var i = 0; i < 8; i++) {
       if (hotcueExists[i]) {
-        cues.push({ name: hotcueName[i], pos: hotcuePos[i], type: hotcueType[i] })
+        cues.push({ slot: i + 1, name: hotcueName[i], pos: hotcuePos[i], type: hotcueType[i] })
+      } else {
+        cues.push({ slot: i + 1 })
       }
     }
     return cues

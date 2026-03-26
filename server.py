@@ -90,13 +90,13 @@ def print_cli_output(level, message, data):
 # Store live metadata (deck state, master clock, playlist, etc)
 # ⚠️  Metadata is stored in plaintext and visible to any process/user with localhost access
 metadata = {
-    "decks": {},       # {A: {...}, B: {...}, ...}
+    "decks": {},  # {A: {...}, B: {...}, ...}
     "deck_loops": {},  # {A: {...}, B: {...}, ...}
-    "deck_cues": {},   # {A: {...}, B: {...}, ...}
+    "deck_cues": {},  # {A: {...}, B: {...}, ...}
     "deck_stems": {},  # {A: {...}, B: {...}, ...}
     "master": {},
     "master_audio": {},
-    "channels": {},    # {1: {...}, 2: {...}, ...}
+    "channels": {},  # {1: {...}, 2: {...}, ...}
     "playlist": {},
     "browser": {},
     "last_update": None,
@@ -702,9 +702,26 @@ def get_html_dashboard():
             gap: 12px;
             font-size: 13px;
             transition: background 0.2s;
+            cursor: pointer;
+            position: relative;
         }
         .log-entry:hover {
             background: #18202b;
+        }
+        .log-entry:hover::after {
+            content: "⎘";
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-dim);
+            font-size: 14px;
+            opacity: 0.6;
+        }
+        .log-entry.copied::after {
+            content: "✓";
+            color: var(--ok);
+            opacity: 1;
         }
         .log-entry.debug { --level-color: #4dbed1; }
         .log-entry.info { --level-color: var(--ok); }
@@ -1138,101 +1155,49 @@ def get_html_dashboard():
         .fullscreen-mode .fullscreen-close-btn {
             display: flex;
         }
-        /* ── Loop strip ── */
-        .loop-strip {
-            display: flex;
-            align-items: center;
-            gap: 6px;
+        /* ── Cue grid ── */
+        .cue-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 4px;
             margin-top: 8px;
-            padding: 5px 8px;
-            background: rgba(40,50,65,0.6);
-            border: 1px solid #2e3744;
-            border-radius: 4px;
-            transition: border-color 0.15s, background 0.15s;
         }
-        .loop-strip.active {
-            background: rgba(124,209,77,0.1);
-            border-color: #7cd14d;
-        }
-        .loop-label {
-            font-size: 9px;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            color: #93a0b1;
-            text-transform: uppercase;
-            flex-shrink: 0;
-        }
-        .loop-strip.active .loop-label { color: #7cd14d; }
-        .loop-size {
-            background: #1a1f27;
-            border: 1px solid #3a4656;
+        .cue-box {
+            background: #0f1318;
+            border: 1px solid #2a3240;
             border-radius: 3px;
-            padding: 2px 7px;
-            font-size: 11px;
+            padding: 4px 5px;
+            min-height: 54px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+        .cue-box.mapped { background: #12161e; }
+        .cue-box.empty { opacity: 0.35; }
+        .cue-slot-num {
+            font-size: 8px;
+            color: #4e5e72;
             font-weight: 700;
-            color: #e6ebf2;
-            min-width: 52px;
+            align-self: flex-start;
+        }
+        .cue-box-pos {
+            font-size: 9px;
+            color: #c8d4e0;
+            font-family: monospace;
+            font-weight: 600;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .cue-box-name {
+            font-size: 8px;
+            color: #d0d8e4;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
             text-align: center;
         }
-        .loop-strip.active .loop-size {
-            background: rgba(124,209,77,0.18);
-            border-color: #7cd14d;
-            color: #9ee85d;
-        }
-        .loop-active-dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: #3a4656;
-            flex-shrink: 0;
-            margin-left: auto;
-        }
-        .loop-strip.active .loop-active-dot {
-            background: #7cd14d;
-            box-shadow: 0 0 5px rgba(124,209,77,0.7);
-        }
-        /* ── Cue panel ── */
-        .cue-panel { margin-top: 8px; }
-        .cue-toggle {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 5px 8px;
-            background: rgba(40,50,65,0.6);
-            border: 1px solid #2e3744;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 9px;
-            font-weight: 700;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            color: #93a0b1;
-            text-align: left;
-        }
-        .cue-toggle:hover { border-color: #4a5666; color: #c0cad8; }
-        .cue-dot { color: #b57aff; font-size: 11px; line-height: 1; }
-        .cue-chevron { margin-left: auto; font-size: 8px; }
-        .cue-list {
-            display: none;
-            flex-wrap: wrap;
-            gap: 4px;
-            padding: 6px 2px 2px;
-        }
-        .cue-list.open { display: flex; }
-        .cue-chip {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            padding: 3px 6px;
-            border-radius: 3px;
-            background: #12161e;
-            border: 1px solid #2a3240;
-            font-size: 9px;
-        }
-        .cue-type-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-        .cue-pos { color: #93a0b1; font-family: monospace; }
-        .cue-name { color: #d0d8e4; max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .sr-only {
             position: absolute;
             width: 1px; height: 1px;
@@ -1443,7 +1408,7 @@ def get_html_dashboard():
             logContainer.innerHTML = filtered.map(log => {
                 const time = new Date(log.timestamp).toLocaleTimeString();
                 let html = `
-                    <div class="log-entry ${log.level}">
+                    <div class="log-entry ${log.level}" onclick="copyLogEntry(this)">
                         <div class="log-level">${log.level}</div>
                         <div class="log-time">${time}</div>
                         <div>
@@ -1709,6 +1674,12 @@ def get_html_dashboard():
                             <span class="deck-flag ${synced ? "on" : ""}">SYNC</span>
                             <span class="deck-flag ${keyLock ? "on" : ""}">🔐KEY</span>
                             <span class="deck-flag ${isMaster ? "on" : ""}">MASTER</span>
+                            ${(() => {
+                                if (!Object.keys(loopData).length) return '';
+                                const active = asBool(loopData.active);
+                                const size = formatLoopSize(loopData.size);
+                                return `<span class="deck-flag ${active ? 'on' : ''}">LOOP ${escapeHtml(size)}</span>`;
+                            })()}
                         </div>
                     </div>
                     <div class="deck-track">
@@ -1727,52 +1698,23 @@ def get_html_dashboard():
                     </div>
                     
                     ${(() => {
-                        if (!Object.keys(loopData).length) return '';
-                        const active = asBool(loopData.active);
-                        const size = formatLoopSize(loopData.size);
-                        const n = Number(loopData.size);
-                        const unit = n === 1 ? 'beat' : 'beats';
-                        const label = `Loop: ${size} ${unit}, ${active ? 'active' : 'inactive'}`;
-                        return `<div class="loop-strip${active ? ' active' : ''}" role="region" aria-label="${label}">
-                            <span class="loop-label" aria-hidden="true">LOOP</span>
-                            <span class="loop-size" aria-hidden="true">${size} ${unit.toUpperCase()}</span>
-                            <span class="loop-active-dot" aria-hidden="true"></span>
-                        </div>`;
-                    })()}
-
-                    ${(() => {
                         const cues = cueData.cues;
                         if (!Array.isArray(cues) || cues.length === 0) return '';
-                        const expanded = !!cueExpanded[deckLetter];
-                        const listId = `cue-list-${deckLetter}`;
-                        const chips = cues.map(c => {
-                            const color = cueTypeColors[c.type] || '#93a0b1';
-                            const typeLabel = c.type || 'cue';
-                            const chipLabel = `${formatTime(c.pos)}${c.name ? ', ' + c.name : ''}, type: ${typeLabel}`;
-                            return `<div class="cue-chip" role="listitem" aria-label="${escapeHtml(chipLabel)}">
-                                <span class="cue-type-dot" style="background:${color}" aria-hidden="true"></span>
-                                <span class="cue-pos" aria-hidden="true">${formatTime(c.pos)}</span>
-                                ${c.name ? `<span class="cue-name" aria-hidden="true">${escapeHtml(c.name)}</span>` : ''}
-                                <span class="sr-only">(${escapeHtml(typeLabel)})</span>
+                        return `<div class="cue-grid" role="list" aria-label="Cue points">${cues.map(c => {
+                            const mapped = c.pos !== undefined;
+                            const bg = mapped ? (cueTypeBg[c.type] || 'rgba(74,100,140,0.13)') : '';
+                            const border = mapped ? (cueTypeBorder[c.type] || 'rgba(74,100,140,0.4)') : '';
+                            const slotLabel = `Cue ${c.slot}${mapped ? ': ' + formatTime(c.pos) + (c.name ? ', ' + c.name : '') : ' (empty)'}`;
+                            return `<div class="cue-box ${mapped ? 'mapped' : 'empty'}" role="listitem" aria-label="${escapeHtml(slotLabel)}"${mapped ? ` style="background:${bg};border-color:${border};"` : ''}>
+                                <span class="cue-slot-num" aria-hidden="true">${c.slot}</span>
+                                ${mapped ? `<span class="cue-box-pos" aria-hidden="true">${escapeHtml(formatTime(c.pos))}</span>
+                                ${c.name ? `<span class="cue-box-name" aria-hidden="true">${escapeHtml(c.name)}</span>` : ''}` : ''}
                             </div>`;
-                        }).join('');
-                        const count = cues.length;
-                        return `<div class="cue-panel">
-                            <button class="cue-toggle"
-                                    onclick="toggleCue('${deckLetter}')"
-                                    aria-expanded="${expanded}"
-                                    aria-controls="${listId}">
-                                <span class="cue-dot" aria-hidden="true">●</span>
-                                ${count} ${count === 1 ? 'cue point' : 'cue points'}
-                                <span class="cue-chevron" aria-hidden="true">${expanded ? '▲' : '▼'}</span>
-                            </button>
-                            <div id="${listId}" class="cue-list${expanded ? ' open' : ''}" role="list">${chips}</div>
-                        </div>`;
+                        }).join('')}</div>`;
                     })()}
                     
                     ${stemsData.stems && Array.isArray(stemsData.stems) && stemsData.stems.length > 0 ? `
                     <div style="margin-top: 8px; padding: 8px; background: rgba(100,200,255,0.08); border: 1px solid #3a4656; border-radius: 4px;">
-                        <div style="font-size: 9px; color: #66ccff; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; font-weight: 700;">🎚️ Stems</div>
                         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
                             ${stemsData.stems.map((stem, idx) => {
                                 const stemNames = ['Drums', 'Bass', 'Other', 'Vocals'];
@@ -1802,13 +1744,6 @@ def get_html_dashboard():
             `;
         }
 
-        // Cue panel toggle state — persists across re-renders
-        const cueExpanded = {};
-        function toggleCue(deck) {
-            cueExpanded[deck] = !cueExpanded[deck];
-            renderMetadata();
-        }
-
         function formatLoopSize(size) {
             if (size === null || size === undefined || size === '') return '-';
             const n = Number(size);
@@ -1820,9 +1755,13 @@ def get_html_dashboard():
             return Number.isInteger(n) ? String(n) : n.toFixed(2);
         }
 
-        const cueTypeColors = {
-            cue: '#4ab8ff', fadeIn: '#7cd14d', fadeOut: '#ff6b6b',
-            load: '#ffd84d', grid: '#cc88ff', loop: '#ff9944',
+        const cueTypeBg = {
+            cue: 'rgba(74,184,255,0.13)', fadeIn: 'rgba(255,153,68,0.13)', fadeOut: 'rgba(255,153,68,0.13)',
+            load: 'rgba(255,216,77,0.13)', grid: 'rgba(220,225,235,0.13)', loop: 'rgba(124,209,77,0.13)',
+        };
+        const cueTypeBorder = {
+            cue: 'rgba(74,184,255,0.4)', fadeIn: 'rgba(255,153,68,0.4)', fadeOut: 'rgba(255,153,68,0.4)',
+            load: 'rgba(255,216,77,0.4)', grid: 'rgba(220,225,235,0.4)', loop: 'rgba(124,209,77,0.4)',
         };
 
         function formatTime(seconds) {
@@ -2043,6 +1982,33 @@ def get_html_dashboard():
             const div = document.createElement("div");
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function copyLogEntry(el) {
+            const level = el.querySelector('.log-level')?.textContent || '';
+            const msg = el.querySelector('.log-message')?.textContent || '';
+            const data = el.querySelector('.log-data')?.textContent || '';
+            const text = data ? `[${level.toUpperCase()}] ${msg}\\n${data}` : `[${level.toUpperCase()}] ${msg}`;
+            const confirm = () => {
+                el.classList.add("copied");
+                setTimeout(() => el.classList.remove("copied"), 1200);
+            };
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(confirm).catch(() => fallbackCopy(el, text, confirm));
+            } else {
+                fallbackCopy(el, text, confirm);
+            }
+        }
+
+        function fallbackCopy(el, text, confirm) {
+            const ta = document.createElement("textarea");
+            ta.value = text;
+            ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            if (document.execCommand("copy")) confirm();
+            document.body.removeChild(ta);
         }
 
         // Initial fetch
